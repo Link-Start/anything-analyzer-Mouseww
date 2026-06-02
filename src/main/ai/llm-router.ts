@@ -347,6 +347,12 @@ export class LLMRouter {
 
       // Has tool calls → execute and continue loop
       if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
+        for (const tc of assistantMsg.tool_calls) {
+          if (!tc.id) throw new Error("tool_call missing id");
+          if (!tc.function?.name) throw new Error("tool_call missing name");
+          if (typeof tc.function?.arguments !== "string") throw new Error("tool_call arguments must be a string");
+        }
+
         history.push({
           role: "assistant",
           content: assistantMsg.content || "",
@@ -360,9 +366,6 @@ export class LLMRouter {
         }
 
         for (const tc of assistantMsg.tool_calls) {
-          if (!tc.id) throw new Error("tool_call missing id");
-          if (!tc.function?.name) throw new Error("tool_call missing name");
-          if (typeof tc.function?.arguments !== "string") throw new Error("tool_call arguments must be a string");
           const args = readToolArguments(tc.function.arguments, "tool_call");
           let result: string;
           try {

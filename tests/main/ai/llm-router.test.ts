@@ -715,6 +715,38 @@ describe("LLMRouter", () => {
       ).rejects.toThrow("tool_call missing name");
     });
 
+    it("should validate OpenAI tool calls before streaming tool status", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        createJSONResponse({
+          choices: [
+            {
+              message: {
+                content: null,
+                tool_calls: [
+                  {
+                    id: "call-1",
+                    type: "function",
+                    function: { arguments: "{}" },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      );
+
+      const router = new LLMRouter(baseConfig);
+
+      await expect(
+        router.completeWithTools(
+          [{ role: "user", content: "test" }],
+          [{ name: "lookup", description: "Lookup", inputSchema: { type: "object" } }],
+          async () => "unused",
+          () => undefined,
+        ),
+      ).rejects.toThrow("tool_call missing name");
+    });
+
     it("should reject OpenAI tool calls with non-string arguments", async () => {
       fetchSpy.mockResolvedValueOnce(
         createJSONResponse({
