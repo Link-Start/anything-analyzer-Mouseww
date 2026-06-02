@@ -297,7 +297,10 @@ export class LLMRouter {
       }
 
       // No tool calls → this is the final answer
-      const content = assistantMsg.content || "";
+      if (typeof assistantMsg.content !== "string") {
+        throw new Error(`LLM 响应格式异常: 缺少 message.content 字段 — ${JSON.stringify(data).slice(0, 200)}`);
+      }
+      const content = assistantMsg.content;
       if (onChunk && content) onChunk(content);
       return {
         content,
@@ -576,8 +579,12 @@ export class LLMRouter {
     if (!Array.isArray(data.choices) || data.choices.length === 0) {
       throw new Error(`LLM 响应格式异常: 缺少 choices 字段 — ${JSON.stringify(data).slice(0, 200)}`);
     }
+    const content = data.choices[0]?.message?.content;
+    if (typeof content !== "string") {
+      throw new Error(`LLM 响应格式异常: 缺少 message.content 字段 — ${JSON.stringify(data).slice(0, 200)}`);
+    }
     return {
-      content: data.choices[0]?.message?.content || "",
+      content,
       promptTokens: data.usage?.prompt_tokens || 0,
       completionTokens: data.usage?.completion_tokens || 0,
     };

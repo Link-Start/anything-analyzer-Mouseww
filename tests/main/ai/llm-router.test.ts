@@ -261,6 +261,20 @@ describe("LLMRouter", () => {
       ).rejects.toThrow("LLM 响应格式异常: 缺少 choices 字段");
     });
 
+    it("should reject OpenAI completion choices without message content", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        createJSONResponse({
+          choices: [{ message: {} }],
+        }),
+      );
+
+      const router = new LLMRouter(baseConfig);
+
+      await expect(
+        router.complete([{ role: "user", content: "test" }]),
+      ).rejects.toThrow("LLM 响应格式异常: 缺少 message.content 字段");
+    });
+
     it('should route to responses endpoint when apiType is "responses"', async () => {
       const config: LLMProviderConfig = { ...baseConfig, apiType: "responses" };
       fetchSpy.mockResolvedValueOnce(
