@@ -651,6 +651,35 @@ describe("LLMRouter", () => {
         ),
       ).rejects.toThrow("function_call arguments must be a valid JSON object");
     });
+
+    it("should validate Responses API function calls before streaming tool status", async () => {
+      const config: LLMProviderConfig = { ...baseConfig, apiType: "responses" };
+      const chunks: string[] = [];
+      fetchSpy.mockResolvedValueOnce(
+        createJSONResponse({
+          output: [
+            {
+              type: "function_call",
+              id: "fc-1",
+              call_id: "call-1",
+              arguments: "{}",
+            },
+          ],
+        }),
+      );
+
+      const router = new LLMRouter(config);
+
+      await expect(
+        router.completeWithTools(
+          [{ role: "user", content: "test" }],
+          [{ name: "lookup", description: "Lookup", inputSchema: { type: "object" } }],
+          async () => "unused",
+          (chunk) => chunks.push(chunk),
+        ),
+      ).rejects.toThrow("function_call missing name");
+      expect(chunks).toEqual([]);
+    });
   });
 
   describe("completeWithTools - OpenAI", () => {
@@ -884,6 +913,34 @@ describe("LLMRouter", () => {
           async () => "unused",
         ),
       ).rejects.toThrow("tool_use input must be an object");
+    });
+
+    it("should validate Anthropic tool uses before streaming tool status", async () => {
+      const config: LLMProviderConfig = {
+        name: "minimax",
+        baseUrl: "https://api.minimax.io/anthropic/v1",
+        apiKey: "test-minimax-key",
+        model: "MiniMax-M2.7-highspeed",
+        maxTokens: 4096,
+      };
+      const chunks: string[] = [];
+      fetchSpy.mockResolvedValueOnce(
+        createJSONResponse({
+          content: [{ type: "tool_use", id: "call-1", input: {} }],
+        }),
+      );
+
+      const router = new LLMRouter(config);
+
+      await expect(
+        router.completeWithTools(
+          [{ role: "user", content: "hello" }],
+          [{ name: "lookup", description: "Lookup", inputSchema: { type: "object" } }],
+          async () => "unused",
+          (chunk) => chunks.push(chunk),
+        ),
+      ).rejects.toThrow("tool_use missing name");
+      expect(chunks).toEqual([]);
     });
 
     it("should reject final Anthropic tool loop responses without text content", async () => {

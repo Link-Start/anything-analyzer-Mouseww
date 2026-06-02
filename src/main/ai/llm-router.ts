@@ -465,6 +465,12 @@ export class LLMRouter {
       );
 
       if (toolUseBlocks.length > 0) {
+        for (const block of toolUseBlocks) {
+          if (!block.id) throw new Error("tool_use missing id");
+          if (!block.name) throw new Error("tool_use missing name");
+          if (!isRecord(block.input)) throw new Error("tool_use input must be an object");
+        }
+
         // Push assistant message with content blocks
         history.push({ role: "assistant", content: data.content });
 
@@ -477,9 +483,6 @@ export class LLMRouter {
         const toolResults: Array<{ type: "tool_result"; tool_use_id: string; content: string }> = [];
         for (const block of toolUseBlocks) {
           let result: string;
-          if (!block.id) throw new Error("tool_use missing id");
-          if (!block.name) throw new Error("tool_use missing name");
-          if (!isRecord(block.input)) throw new Error("tool_use input must be an object");
           try {
             result = await callTool(block.name, block.input);
           } catch (err) {
@@ -585,6 +588,12 @@ export class LLMRouter {
       const functionCalls = data.output.filter((item) => item.type === "function_call");
 
       if (functionCalls.length > 0) {
+        for (const fc of functionCalls) {
+          if (!fc.call_id) throw new Error("function_call missing call_id");
+          if (!fc.name) throw new Error("function_call missing name");
+          if (typeof fc.arguments !== "string") throw new Error("function_call arguments must be a string");
+        }
+
         for (const item of data.output) {
           input.push(item as Record<string, unknown>);
         }
@@ -596,9 +605,6 @@ export class LLMRouter {
 
         for (const fc of functionCalls) {
           let result: string;
-          if (!fc.call_id) throw new Error("function_call missing call_id");
-          if (!fc.name) throw new Error("function_call missing name");
-          if (typeof fc.arguments !== "string") throw new Error("function_call arguments must be a string");
           const args = readToolArguments(fc.arguments, "function_call");
           try {
             result = await callTool(fc.name, args);
